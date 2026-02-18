@@ -360,7 +360,7 @@ textarea:focus {
         <span class="pcount" id="cntB">0 lines</span>
       </div>
       <textarea id="taBlack" spellcheck="false"
-        placeholder="Strings the regex must NOT match.&#10;&#10"
+        placeholder="Strings the regex must NOT match."
       ></textarea>
     </div>
   </div>
@@ -483,8 +483,7 @@ function generateForLine(line, otherWhitelist, blacklist, minLen, maxLen, anchor
     if (candidates.length > 0) {
       candidates.sort((a, b) => scoreCand(a, line) - scoreCand(b, line));
       const best = candidates[0];
-      let rx = anchored ? `^${escRx(best)}$` : escRx(best);
-      if (!caseSens) rx = `(?i)${rx}`;
+      const rx = anchored ? `^${escRx(best)}$` : escRx(best);
       return { pattern: best, regex: rx, ok: true };
     }
   }
@@ -493,8 +492,7 @@ function generateForLine(line, otherWhitelist, blacklist, minLen, maxLen, anchor
   const inBlack = blacklistNorm.some(b => b.includes(lineNorm));
   const inOther = otherNorm.some(w => w.includes(lineNorm));
   if (!inBlack && !inOther) {
-    let rx = anchored ? `^${escRx(line)}$` : escRx(line);
-    if (!caseSens) rx = `(?i)${rx}`;
+    const rx = anchored ? `^${escRx(line)}$` : escRx(line);
     return { pattern: line, regex: rx, ok: true };
   }
 
