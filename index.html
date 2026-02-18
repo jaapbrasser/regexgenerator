@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RegEx Forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --glass:         rgba(255,255,255,0.07);
+  --glass-hover:   rgba(255,255,255,0.11);
+  --glass-border:  rgba(255,255,255,0.14);
+  --glass-shine:   rgba(255,255,255,0.50);
+  --blur:          28px;
+  --blue:          #4da6ff;
+  --teal:          #2de2d5;
+  --rose:          #ff6b8a;
+  --amber:         #ffc94d;
+  --green:         #3de89a;
+  --purple:        #b78aff;
+  --txt:           rgba(255,255,255,0.93);
+  --txt2:          rgba(255,255,255,0.55);
+  --txt3:          rgba(255,255,255,0.28);
+  --r-xl: 22px;
+  --r-lg: 16px;
+  --r-md: 11px;
+}
+
+html, body { min-height: 100vh; font-family: 'DM Sans', sans-serif; color: var(--txt); overflow-x: hidden; background: #060810; }
+
+/* ── Background ── */
+.bg {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden;
+}
+.bg-mesh {
+  position: absolute; inset: -40%;
+  background:
+    radial-gradient(ellipse 70% 55% at 15% 15%, rgba(77,166,255,0.16) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 70% at 85% 5%,  rgba(45,226,213,0.11) 0%, transparent 55%),
+    radial-gradient(ellipse 65% 50% at 55% 85%, rgba(255,107,138,0.09) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 60% at 5%  75%, rgba(183,138,255,0.08) 0%, transparent 55%);
+  animation: meshDrift 18s ease-in-out infinite alternate;
+}
+@keyframes meshDrift {
+  0%   { transform: translate(0,0) rotate(0deg) scale(1); }
+  50%  { transform: translate(1.5%,1%) rotate(0.3deg) scale(1.015); }
+  100% { transform: translate(-1%,1.5%) rotate(-0.2deg) scale(0.99); }
+}
+.bg-grain {
+  position: absolute; inset: 0; opacity: 0.55;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+/* ── Glass mixin ── */
+.g {
+  background: var(--glass);
+  backdrop-filter: blur(var(--blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-xl);
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.05) inset,
+    0 1px 0 rgba(255,255,255,0.15) inset,
+    0 20px 60px rgba(0,0,0,0.28),
+    0 1px 6px rgba(0,0,0,0.18);
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.g::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 8%; right: 8%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-shine) 35%, var(--glass-shine) 65%, transparent);
+  opacity: 0.6;
+}
+.g::after {
+  content: '';
+  position: absolute; inset: 1px;
+  border-radius: calc(var(--r-xl) - 1px);
+  background: linear-gradient(148deg, rgba(255,255,255,0.05) 0%, transparent 45%);
+  pointer-events: none;
+}
+
+/* ── Layout ── */
+.app {
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 52px 20px 90px;
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ── Header ── */
+.hdr { text-align: center; animation: up 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+.hdr-eye {
+  font-size: 10.5px; font-weight: 500; letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 10px; opacity: 0.8;
+}
+.hdr-title {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: clamp(40px, 6vw, 68px);
+  line-height: 1.0;
+  letter-spacing: -0.02em;
+  background: linear-gradient(130deg, #fff 0%, rgba(160,210,255,0.9) 38%, rgba(45,226,213,0.8) 72%, rgba(255,255,255,0.6) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.hdr-sub {
+  margin-top: 11px; font-size: 14.5px; color: var(--txt2); font-weight: 300; letter-spacing: 0.01em;
+}
+
+/* ── Two-column input row ── */
+.inputs-row {
+  width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  animation: up 0.75s cubic-bezier(0.16,1,0.3,1) 0.1s both;
+}
+@media (max-width: 660px) { .inputs-row { grid-template-columns: 1fr; } }
+
+.panel { padding: 22px; display: flex; flex-direction: column; gap: 11px; }
+.panel-hd { display: flex; align-items: center; gap: 8px; }
+.pdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.pdot-w { background: var(--green);  box-shadow: 0 0 7px var(--green); }
+.pdot-b { background: var(--rose);   box-shadow: 0 0 7px var(--rose);  }
+.plabel { font-size: 11px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: var(--txt2); }
+.pcount { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--txt3); transition: color 0.2s; }
+
+textarea {
+  width: 100%; min-height: 170px; resize: vertical;
+  background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--r-lg); padding: 13px 15px;
+  font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 300;
+  color: var(--txt); line-height: 1.75; outline: none; caret-color: var(--blue);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+textarea::placeholder { color: var(--txt3); }
+textarea:focus {
+  background: rgba(0,0,0,0.34);
+  border-color: rgba(77,166,255,0.38);
+  box-shadow: 0 0 0 3px rgba(77,166,255,0.10), 0 0 18px rgba(77,166,255,0.05) inset;
+}
+.panel:nth-child(2) textarea:focus {
+  border-color: rgba(255,107,138,0.35);
+  box-shadow: 0 0 0 3px rgba(255,107,138,0.09), 0 0 18px rgba(255,107,138,0.05) inset;
+}
+
+/* ── Toolbar ── */
+.toolbar {
+  width: 100%;
+  animation: up 0.75s cubic-bezier(0.16,1,0.3,1) 0.18s both;
+}
+.toolbar-inner {
+  padding: 14px 22px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 18px;
+}
+
+.opt-grp { display: flex; align-items: center; gap: 9px; }
+.opt-lbl { font-size: 12px; color: var(--txt2); white-space: nowrap; }
+
+/* Toggle */
+.tog { position: relative; width: 36px; height: 21px; cursor: pointer; flex-shrink: 0; }
+.tog input { opacity: 0; width: 0; height: 0; position: absolute; }
+.tog-track {
+  position: absolute; inset: 0; border-radius: 10.5px;
+  background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.13);
+  transition: background 0.2s, border-color 0.2s;
+}
+.tog-thumb {
+  position: absolute; top: 2.5px; left: 2.5px; width: 16px; height: 16px;
+  border-radius: 50%; background: rgba(255,255,255,0.45);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), background 0.2s;
+}
+.tog input:checked ~ .tog-track  { background: rgba(77,166,255,0.42); border-color: rgba(77,166,255,0.55); }
+.tog input:checked ~ .tog-thumb  { transform: translateX(15px); background: #fff; }
+
+/* Number input */
+.numinp {
+  width: 50px; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px; padding: 5px 7px; font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: var(--txt); text-align: center; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.numinp:focus { border-color: rgba(77,166,255,0.40); box-shadow: 0 0 0 2px rgba(77,166,255,0.10); }
+.numinp::-webkit-inner-spin-button, .numinp::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+.div-v { width: 1px; height: 22px; background: rgba(255,255,255,0.08); flex-shrink: 0; }
+
+/* Generate button */
+.btn-gen {
+  margin-left: auto; padding: 9px 26px; border: none; border-radius: 100px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; letter-spacing: 0.03em;
+  color: #fff; overflow: hidden; position: relative;
+  background: linear-gradient(135deg, #4da6ff 0%, #1b72e8 100%);
+  box-shadow: 0 0 0 1px rgba(77,166,255,0.45), 0 4px 18px rgba(77,166,255,0.32), 0 1px 0 rgba(255,255,255,0.22) inset;
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.btn-gen::before {
+  content: ''; position: absolute; top: 0; left: -100%; width: 55%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  transition: left 0.45s;
+}
+.btn-gen:hover::before { left: 150%; }
+.btn-gen:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(77,166,255,0.55), 0 8px 26px rgba(77,166,255,0.42), 0 1px 0 rgba(255,255,255,0.28) inset; }
+.btn-gen:active { transform: translateY(0); }
+.btn-gen.busy { opacity: 0.65; pointer-events: none; }
+
+/* ── Results area ── */
+.results-wrap {
+  width: 100%;
+  animation: up 0.75s cubic-bezier(0.16,1,0.3,1) 0.26s both;
+}
+.results-inner { padding: 26px; display: flex; flex-direction: column; gap: 18px; }
+
+.res-hdr { display: flex; align-items: center; gap: 10px; }
+.res-title { font-size: 11px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: var(--txt2); }
+
+.summary-pills { margin-left: auto; display: flex; gap: 8px; }
+.spill {
+  padding: 4px 11px; border-radius: 100px; font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  opacity: 0; transform: scale(0.8);
+  transition: opacity 0.3s, transform 0.3s;
+}
+.spill.vis { opacity: 1; transform: scale(1); }
+.spill-ok   { background: rgba(61,232,154,0.14); border: 1px solid rgba(61,232,154,0.32); color: var(--green); }
+.spill-warn { background: rgba(255,201,77,0.13);  border: 1px solid rgba(255,201,77,0.30);  color: var(--amber); }
+.spill-err  { background: rgba(255,107,138,0.13); border: 1px solid rgba(255,107,138,0.30); color: var(--rose); }
+
+/* Results table */
+.res-table { display: flex; flex-direction: column; gap: 6px; }
+
+.res-row {
+  display: grid;
+  grid-template-columns: minmax(0,1.6fr) minmax(0,1fr) 28px;
+  gap: 10px; align-items: start;
+  padding: 11px 14px; border-radius: var(--r-lg);
+  background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.06);
+  transition: background 0.2s, border-color 0.2s;
+  animation: rowIn 0.4s cubic-bezier(0.16,1,0.3,1) both;
+}
+.res-row:hover { background: rgba(0,0,0,0.26); border-color: rgba(255,255,255,0.10); }
+.res-row.row-ok   { border-left: 2px solid rgba(61,232,154,0.50); }
+.res-row.row-warn { border-left: 2px solid rgba(255,201,77,0.50); }
+.res-row.row-err  { border-left: 2px solid rgba(255,107,138,0.50); }
+
+@keyframes rowIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.res-source {
+  font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--txt2);
+  line-height: 1.6; word-break: break-word;
+}
+/* Highlight the matched fragment inside source */
+.res-source mark {
+  background: rgba(77,166,255,0.22); color: var(--blue);
+  border-radius: 3px; padding: 1px 2px;
+  font-style: normal;
+}
+.res-source .src-no-match { opacity: 0.45; font-style: italic; }
+
+.res-regex {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 400;
+  color: var(--blue); line-height: 1.6; word-break: break-all;
+}
+.res-regex .tk-anchor { color: var(--purple); }
+.res-regex .tk-group  { color: var(--blue); }
+.res-regex .tk-esc    { color: var(--teal); }
+.res-regex .tk-lit    { color: var(--amber); }
+.res-regex.no-match   { color: var(--rose); font-style: italic; font-size: 11px; }
+
+.res-actions { display: flex; flex-direction: column; gap: 4px; align-items: center; padding-top: 1px; }
+
+/* Copy single */
+.btn-cp-row {
+  width: 24px; height: 24px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05); color: var(--txt3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 11px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-cp-row:hover { background: rgba(255,255,255,0.10); color: var(--txt); border-color: rgba(255,255,255,0.18); }
+.btn-cp-row.cped  { color: var(--green); border-color: rgba(61,232,154,0.35); background: rgba(61,232,154,0.08); }
+
+/* Column headers */
+.res-col-hdr {
+  display: grid;
+  grid-template-columns: minmax(0,1.6fr) minmax(0,1fr) 28px;
+  gap: 10px; padding: 0 14px 6px;
+}
+.res-col-hdr span {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--txt3);
+}
+
+/* Footer actions */
+.res-footer { display: flex; align-items: center; gap: 12px; padding-top: 4px; }
+.res-footer-note { font-size: 11.5px; color: var(--txt3); }
+.btn-copy-all {
+  margin-left: auto; padding: 7px 18px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06); color: var(--txt2); font-family: 'DM Sans', sans-serif;
+  font-size: 12px; font-weight: 500; cursor: pointer; letter-spacing: 0.03em;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.btn-copy-all:hover { background: rgba(255,255,255,0.10); color: var(--txt); border-color: rgba(255,255,255,0.22); }
+.btn-copy-all.cped  { color: var(--green); border-color: rgba(61,232,154,0.35); background: rgba(61,232,154,0.08); }
+
+/* Idle */
+.idle {
+  display: flex; align-items: center; gap: 14px; padding: 6px 0;
+}
+.idle-line { flex: 1; height: 1px; background: linear-gradient(90deg,transparent,rgba(255,255,255,0.09),transparent); }
+.idle-txt  { font-size: 12px; color: var(--txt3); white-space: nowrap; }
+
+/* ── Animations ── */
+@keyframes up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="bg"><div class="bg-mesh"></div><div class="bg-grain"></div></div>
+
+<div class="app">
+
+  <!-- Header -->
+  <header class="hdr">
+    <div class="hdr-eye">Pattern Intelligence</div>
+    <h1 class="hdr-title">RegEx Forge</h1>
+    <p class="hdr-sub">One unique identifying regex per line</p>
+  </header>
+
+  <!-- Inputs -->
+  <div class="inputs-row">
+    <div class="g panel">
+      <div class="panel-hd">
+        <span class="pdot pdot-w"></span>
+        <span class="plabel">Lines to Identify</span>
+        <span class="pcount" id="cntW">0 lines</span>
+      </div>
+      <textarea id="taWhite" spellcheck="false"
+        placeholder="One full string per line — a unique regex will be generated for each."
+      ></textarea>
+    </div>
+    <div class="g panel">
+      <div class="panel-hd">
+        <span class="pdot pdot-b"></span>
+        <span class="plabel">Exclusions</span>
+        <span class="pcount" id="cntB">0 lines</span>
+      </div>
+      <textarea id="taBlack" spellcheck="false"
+        placeholder="Strings the regex must NOT match.&#10;&#10"
+      ></textarea>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="g toolbar-inner">
+      <div class="opt-grp">
+        <span class="opt-lbl">Anchored (^…$)</span>
+        <label class="tog">
+          <input type="checkbox" id="optAnchored" />
+          <span class="tog-track"></span><span class="tog-thumb"></span>
+        </label>
+      </div>
+      <div class="opt-grp">
+        <span class="opt-lbl">Case sensitive</span>
+        <label class="tog">
+          <input type="checkbox" id="optCaseSens" checked />
+          <span class="tog-track"></span><span class="tog-thumb"></span>
+        </label>
+      </div>
+      <div class="div-v"></div>
+      <div class="opt-grp">
+        <span class="opt-lbl">Min length</span>
+        <input class="numinp" type="number" id="optMin" value="3" min="1" max="30" />
+      </div>
+      <div class="opt-grp">
+        <span class="opt-lbl">Max length</span>
+        <input class="numinp" type="number" id="optMax" value="40" min="1" max="200" />
+      </div>
+      <div class="div-v"></div>
+      <button class="btn-gen" id="btnGen" onclick="run()">
+        ⌘ Generate
+      </button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-wrap g">
+    <div class="results-inner">
+      <div class="res-hdr">
+        <span class="res-title">Results</span>
+        <div class="summary-pills" id="summaryPills"></div>
+      </div>
+      <div id="resultsBody">
+        <div class="idle">
+          <div class="idle-line"></div>
+          <span class="idle-txt">Paste your strings above and hit Generate</span>
+          <div class="idle-line"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+//  ALGORITHM
+//  For each whitelist line, find the shortest substring that:
+//    1. Does NOT appear in any blacklist entry (substring search)
+//    2. Does NOT appear in any OTHER whitelist line (substring search)
+//  This guarantees the regex uniquely identifies that line.
+//
+//  Scoring: prefer shorter, prefer word-aligned starts, prefer no special chars
+// ─────────────────────────────────────────────────────────────────────────────
+
+function parseLines(txt) {
+  return txt.split('\n').map(s => s.trim()).filter(Boolean);
+}
+
+function escRx(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Score a candidate: lower = better
+// Rewards: shorter length, word boundary on left, no mid-word splits, common word units
+function scoreCand(cand, source) {
+  let s = cand.length * 10;
+  // Bonus: starts at word boundary
+  const idx = source.indexOf(cand);
+  if (idx === 0 || /\s/.test(source[idx - 1])) s -= 8;
+  // Bonus: ends at word boundary
+  const end = idx + cand.length;
+  if (end === source.length || /\s/.test(source[end])) s -= 5;
+  // Penalty: starts mid-word
+  if (idx > 0 && /\w/.test(source[idx - 1]) && /\w/.test(source[idx])) s += 12;
+  return s;
+}
+
+function generateForLine(line, otherWhitelist, blacklist, minLen, maxLen, anchored, caseSens) {
+  const n = line.length;
+  const candidates = [];
+
+  // Normalize for case-insensitive comparison if needed
+  const lineNorm = caseSens ? line : line.toLowerCase();
+  const blacklistNorm = caseSens ? blacklist : blacklist.map(b => b.toLowerCase());
+  const otherNorm = caseSens ? otherWhitelist : otherWhitelist.map(w => w.toLowerCase());
+
+  for (let len = minLen; len <= Math.min(maxLen, n); len++) {
+    for (let start = 0; start <= n - len; start++) {
+      const cand = line.slice(start, start + len);
+      const candNorm = caseSens ? cand : cand.toLowerCase();
+
+      // Must not appear in any blacklist entry
+      const inBlack = blacklistNorm.some(b => b.includes(candNorm));
+      if (inBlack) continue;
+
+      // Must not appear in any OTHER whitelist line
+      const inOtherWhite = otherNorm.some(w => w.includes(candNorm));
+      if (inOtherWhite) continue;
+
+      candidates.push(cand);
+    }
+    // Once we have candidates at this length, score & return the best
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => scoreCand(a, line) - scoreCand(b, line));
+      const best = candidates[0];
+      let rx = anchored ? `^${escRx(best)}$` : escRx(best);
+      if (!caseSens) rx = `(?i)${rx}`;
+      return { pattern: best, regex: rx, ok: true };
+    }
+  }
+
+  // No discriminating substring found — try the full line as last resort
+  const inBlack = blacklistNorm.some(b => b.includes(lineNorm));
+  const inOther = otherNorm.some(w => w.includes(lineNorm));
+  if (!inBlack && !inOther) {
+    let rx = anchored ? `^${escRx(line)}$` : escRx(line);
+    if (!caseSens) rx = `(?i)${rx}`;
+    return { pattern: line, regex: rx, ok: true };
+  }
+
+  return { pattern: null, regex: null, ok: false,
+    reason: 'No unique discriminating substring found. Try increasing max length.' };
+}
+
+function runAll(whitelist, blacklist, anchored, caseSens, minLen, maxLen) {
+  return whitelist.map((line, i) => {
+    const others = whitelist.filter((_, j) => j !== i);
+    const result = generateForLine(line, others, blacklist, minLen, maxLen, anchored, caseSens);
+    return { line, ...result };
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  UI
+// ─────────────────────────────────────────────────────────────────────────────
+
+document.getElementById('taWhite').addEventListener('input', updateCounts);
+document.getElementById('taBlack').addEventListener('input', updateCounts);
+
+function updateCounts() {
+  const w = parseLines(document.getElementById('taWhite').value);
+  const b = parseLines(document.getElementById('taBlack').value);
+  const cw = document.getElementById('cntW');
+  const cb = document.getElementById('cntB');
+  cw.textContent = `${w.length} ${w.length === 1 ? 'line' : 'lines'}`;
+  cb.textContent = `${b.length} ${b.length === 1 ? 'line' : 'lines'}`;
+  cw.style.color = w.length ? 'rgba(61,232,154,0.65)' : '';
+  cb.style.color = b.length ? 'rgba(255,107,138,0.65)' : '';
+}
+
+function highlightRx(s) {
+  return escHtml(s)
+    .replace(/(\\\^|\\\$|\^|\$)/g, '<span class="tk-anchor">$1</span>')
+    .replace(/(\(\?:|\(|\))/g, '<span class="tk-group">$1</span>')
+    .replace(/(\\[^])/g, '<span class="tk-esc">$1</span>');
+}
+
+// Highlight the matched fragment inside the source string
+function highlightSource(line, pattern) {
+  if (!pattern) return `<span class="src-no-match">${escHtml(line)}</span>`;
+  const idx = line.indexOf(pattern);
+  if (idx === -1) return escHtml(line);
+  const pre  = escHtml(line.slice(0, idx));
+  const mid  = escHtml(line.slice(idx, idx + pattern.length));
+  const post = escHtml(line.slice(idx + pattern.length));
+  return `${pre}<mark>${mid}</mark>${post}`;
+}
+
+let lastResults = [];
+
+function run() {
+  const whitelist = parseLines(document.getElementById('taWhite').value);
+  const blacklist = parseLines(document.getElementById('taBlack').value);
+  const anchored  = document.getElementById('optAnchored').checked;
+  const caseSens  = document.getElementById('optCaseSens').checked;
+  const minLen    = Math.max(1, parseInt(document.getElementById('optMin').value) || 3);
+  const maxLen    = Math.max(minLen, parseInt(document.getElementById('optMax').value) || 40);
+
+  if (!whitelist.length) {
+    renderEmpty('Add at least one line to "Lines to Identify".');
+    return;
+  }
+
+  const btn = document.getElementById('btnGen');
+  btn.classList.add('busy'); btn.textContent = 'Working…';
+
+  setTimeout(() => {
+    lastResults = runAll(whitelist, blacklist, anchored, caseSens, minLen, maxLen);
+    renderResults(lastResults);
+    btn.classList.remove('busy'); btn.textContent = '⌘ Generate';
+  }, 20);
+}
+
+function renderEmpty(msg) {
+  document.getElementById('resultsBody').innerHTML = `
+    <div class="idle">
+      <div class="idle-line"></div>
+      <span class="idle-txt" style="color:var(--rose);">${escHtml(msg)}</span>
+      <div class="idle-line"></div>
+    </div>`;
+  document.getElementById('summaryPills').innerHTML = '';
+}
+
+function renderResults(results) {
+  const ok   = results.filter(r => r.ok).length;
+  const fail = results.length - ok;
+
+  // Summary pills
+  const pills = document.getElementById('summaryPills');
+  pills.innerHTML = `
+    <span class="spill spill-ok vis">${ok} solved</span>
+    ${fail > 0 ? `<span class="spill spill-err vis">${fail} unsolvable</span>` : ''}
+  `;
+
+  // Table
+  const rows = results.map((r, i) => {
+    const cls = r.ok ? 'row-ok' : 'row-err';
+    const delay = (i * 35);
+    const srcHtml = highlightSource(r.line, r.pattern);
+    const rxHtml  = r.ok
+      ? `<span class="res-regex">${highlightRx(r.regex)}</span>`
+      : `<span class="res-regex no-match">No unique pattern found</span>`;
+
+    return `
+      <div class="res-row ${cls}" style="animation-delay:${delay}ms">
+        <div class="res-source">${srcHtml}</div>
+        ${rxHtml}
+        <div class="res-actions">
+          ${r.ok ? `<button class="btn-cp-row" title="Copy regex" onclick="copyOne(this, ${i})">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M4 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6.414a1 1 0 0 0-.293-.707L9.293 3.293A1 1 0 0 0 8.586 3H6a2 2 0 0 0-2-2H4zm4 1.5V6h2.5L8 3.5zM4 3h2v1H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7H8a1 1 0 0 0-1-1V3H4z"/>
+            </svg>
+          </button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  const solvedRegexes = results.filter(r => r.ok).map(r => r.regex);
+
+  document.getElementById('resultsBody').innerHTML = `
+    <div class="res-col-hdr">
+      <span>Source line · <span style="color:var(--blue);opacity:0.7">matched fragment</span></span>
+      <span>Generated regex</span>
+      <span></span>
+    </div>
+    <div class="res-table">${rows}</div>
+    ${results.length > 1 ? `
+    <div class="res-footer">
+      <span class="res-footer-note">${ok} of ${results.length} lines resolved</span>
+      ${ok > 0 ? `<button class="btn-copy-all" id="btnCpAll" onclick="copyAll()">
+        Copy all regexes
+      </button>` : ''}
+    </div>` : ''}
+  `;
+}
+
+function copyOne(btn, idx) {
+  const rx = lastResults[idx]?.regex;
+  if (!rx) return;
+  navigator.clipboard.writeText(rx).then(() => {
+    btn.classList.add('cped');
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z"/></svg>`;
+    setTimeout(() => {
+      btn.classList.remove('cped');
+      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6.414a1 1 0 0 0-.293-.707L9.293 3.293A1 1 0 0 0 8.586 3H6a2 2 0 0 0-2-2H4zm4 1.5V6h2.5L8 3.5zM4 3h2v1H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7H8a1 1 0 0 0-1-1V3H4z"/></svg>`;
+    }, 2000);
+  });
+}
+
+function copyAll() {
+  const lines = lastResults.filter(r => r.ok).map(r => r.regex).join('\n');
+  navigator.clipboard.writeText(lines).then(() => {
+    const btn = document.getElementById('btnCpAll');
+    if (!btn) return;
+    btn.classList.add('cped');
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.classList.remove('cped'); btn.textContent = 'Copy all regexes'; }, 2000);
+  });
+}
+
+// Cmd/Ctrl+Enter shortcut
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') run();
+});
+</script>
+</body>
+</html>
